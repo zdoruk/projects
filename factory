@@ -1,0 +1,212 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include<algorithm>
+using namespace std;
+
+bool sortcol(const vector<int>& v1,
+    const vector<int>& v2) {
+    return v1[3] < v2[3];
+}
+
+const char Operations[] = "Operations.txt";
+const char SetupDuration[] = "SetupDuration.txt";
+const char Orders[] = "Orders.txt";
+
+class machine {
+private:
+    int current_mod;
+    vector<vector<int>> mods;
+    vector<vector<int>> setups;
+    vector<vector<int>> orders;
+
+
+
+    public:
+        void setCurrentMod(int mod) {
+            this->current_mod = mod;
+        }
+
+        void setMods(vector<int> v1) {
+            mods.push_back(v1);
+        }
+
+        void setSetups(vector<int> v1) {
+            setups.push_back(v1);
+        }
+
+        void setOrders(vector<int> v1) {
+            orders.push_back(v1);
+        }
+
+        int getOrders(int a, int b) {
+            return orders[a][b];
+        }
+
+        int getSetups(int a,int b) {
+            return setups[a][b];
+        }
+
+        int getMods(int a, int b) {
+            return mods[a][b];
+        }
+
+        int getCurrentMod() {
+            return current_mod;
+        }
+
+        void sortOrders() {
+            sort(orders.begin(), orders.end(), sortcol);
+        }
+        
+
+        int getOrderCode(int i) {
+            return orders[i][0];
+        }
+};
+
+int main()
+{
+    machine machine;
+    string line;
+    ifstream my_file(Operations);
+    vector<string> operations;
+    vector<string> setups;
+    vector<string> order_line;
+    vector<int> mods;
+    vector<int> durations;
+    vector<int> orders;
+    int first_mod = 0;
+    int modb = 0;
+    int setupb = 0;
+    int orderb = 0;
+    int tempb = 0;
+    if (my_file.is_open())
+    {
+
+        while (getline(my_file, line))
+        {
+            operations.push_back(line);
+        }
+    }
+    my_file.close();
+    for (int i = 0; i < operations.size(); i++) {
+        stringstream ss(operations[i]);
+        while (ss.good()) {
+            tempb++;
+            string substr;
+            getline(ss, substr, ';');
+            mods.push_back(stoi(substr));
+        }
+        modb = tempb;
+        tempb = 0;
+        machine.setMods(mods);
+        mods.clear();
+    }
+    line.clear();
+
+
+    ifstream my_file1(SetupDuration);
+    if (my_file1.is_open())
+    {
+
+        while (getline(my_file1, line))
+        {
+            setups.push_back(line);
+        }
+    }
+    my_file1.close();
+    for (int i = 0; i < setups.size(); i++) {
+        stringstream ss(setups[i]);
+        while (ss.good()) {
+            tempb++;
+            string substr;
+            getline(ss, substr, ';');
+            durations.push_back(stoi(substr));
+        }
+        setupb = tempb;
+        tempb = 0;
+        machine.setSetups(durations);
+        swap(durations[0], durations[1]);
+        machine.setSetups(durations);
+        durations.clear();
+    }
+    line.clear();
+
+
+    ifstream my_file2(Orders);
+    if (my_file2.is_open())
+    {
+
+        while (getline(my_file2, line))
+        {
+            order_line.push_back(line);
+        }
+    }
+    my_file2.close();
+    for (int i = 0; i < order_line.size(); i++) {
+        stringstream ss(order_line[i]);
+        while (ss.good()) {
+            tempb++;
+            string substr;
+            getline(ss, substr, ';');
+            orders.push_back(stoi(substr));
+        }
+        orderb = tempb;
+        tempb = 0;
+        machine.setOrders(orders);
+        orders.clear();
+    }
+    line.clear();
+    machine.sortOrders();
+    first_mod=machine.getOrders(0, 2);
+    machine.setCurrentMod(first_mod);
+    string toplam_line;
+    string cikti;
+    int setup_overhead=0;
+    int op_mod=0;
+    int op_time = 0;
+    double op_length = 0;
+    double op_speed = 0;
+    int order_code = 0;
+    int schedule_time = 0;
+    for (int i = 0; i < order_line.size(); i++) {
+        order_code = machine.getOrderCode(i);
+       op_mod = machine.getOrders(i, 2);
+       if (op_mod != machine.getCurrentMod()) {
+           for (int j = 0; j < setups.size() * 2; j++) {
+               if (op_mod == machine.getSetups(j, 1)) {
+                   if (machine.getCurrentMod() == machine.getSetups(j, 0)) {
+                       schedule_time += machine.getSetups(j, 2);
+                       setup_overhead = machine.getSetups(j, 2);
+                       machine.setCurrentMod(op_mod);
+                   }
+               }
+               
+           }
+       }
+           toplam_line = to_string(schedule_time) + ";";
+
+           op_length = machine.getOrders(i,1);
+           op_speed = machine.getMods(op_mod - 1, 1);
+           op_time += round(op_length / op_speed);
+           schedule_time += op_time;
+           toplam_line += to_string(op_mod) + ";";
+           toplam_line += to_string(order_code) + ";";
+           toplam_line += to_string(int(op_length)) + ";";
+           toplam_line += to_string(setup_overhead) + ";\n";
+           setup_overhead = 0;
+           cikti += toplam_line;
+           toplam_line.clear();
+    }
+    
+
+    ofstream cikti_file("Schedule.txt");
+    if (cikti_file.is_open())
+    {
+        cikti_file << cikti;
+        cikti_file.close();
+    }
+}
